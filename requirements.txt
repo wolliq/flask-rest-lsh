@@ -1,0 +1,11 @@
+flask
+flask-smorest
+python-dotenv
+marshmallow
+sqlalchemy
+flask-sqlalchemy
+pandas
+seaborn
+scikit-learn
+pyspark
+delta-spark
