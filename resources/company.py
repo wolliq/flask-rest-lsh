@@ -28,8 +28,8 @@ class Company(MethodView):
         company = Company.query.get(company_id)
 
         if company:
-            company.price = company_data["revenue"]
             company.name = company_data["name"]
+            company.revenue = company_data["revenue"]
         else:
             company = CompanyModel(id=company_id, **company_data)
 
