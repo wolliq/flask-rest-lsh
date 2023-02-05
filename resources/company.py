@@ -1,3 +1,4 @@
+import pandas as pd
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -7,6 +8,27 @@ from models import CompanyModel
 from schemas import CompanySchema
 
 blp = Blueprint("Company", "company", description="Operations on companies")
+
+
+class CompanyModelManager:
+    pass
+
+
+@blp.route("/score/<string:company_id>")
+class CompanyScore(MethodView):
+    def get(self, company_id):
+        company = CompanyModel.query.get_or_404(company_id)
+
+        companies = CompanyModel.query.all()
+        df_companies = pd.DataFrame([c._asdict() for c in companies])
+
+        manager = CompanyModelManager()
+
+        delta_path = ""
+        path = manager.createDeltaTable(path=delta_path)
+        response = manager.score(dataset_path=delta_path, query=company, method="lsh_spark")
+
+        return {"message": f"Company response: {response}."}
 
 
 @blp.route("/company/<string:company_id>")
