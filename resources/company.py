@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
@@ -7,6 +9,9 @@ from db import db
 from models import CompanyModel
 from schemas import CompanySchema
 from scorers.scorer import SparkLshScorer
+
+logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
+logger = logging.getLogger(__name__)
 
 blp = Blueprint("Company", "company", description="Operations on companies")
 
@@ -19,8 +24,8 @@ class CompanyScore(MethodView):
         companies = CompanyModel.query.all()
 
         df_companies = pd.DataFrame(
-                [c.__dict__ for c in companies]
-            )\
+            [c.__dict__ for c in companies]
+        ) \
             .drop(columns='_sa_instance_state')
 
         print(df_companies.head(10))
@@ -29,7 +34,8 @@ class CompanyScore(MethodView):
                                 dataset=df_companies,
                                 company_id=company_id)
 
-        scorer.process_sink_delta_feature_store(delta_dataset_path=f"./lakehouse/company")
+        last_delta_version = scorer.process_sink_delta_feature_store(delta_dataset_path=f"./lakehouse/company")
+        logger.warning(f"Delta table last version: {last_delta_version}")
 
         res = scorer.train_and_score(model_path="./lsh_brp", save_model=True)
 
