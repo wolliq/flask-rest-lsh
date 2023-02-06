@@ -1,3 +1,4 @@
+import pandas as pd
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -5,8 +6,34 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from db import db
 from models import CompanyModel
 from schemas import CompanySchema
+from scorers.scorer import SparkLshScorer
 
 blp = Blueprint("Company", "company", description="Operations on companies")
+
+
+@blp.route("/score/<string:company_id>")
+class CompanyScore(MethodView):
+    def get(self, company_id):
+        CompanyModel.query.get_or_404(company_id)
+
+        companies = CompanyModel.query.all()
+
+        df_companies = pd.DataFrame(
+                [c.__dict__ for c in companies]
+            )\
+            .drop(columns='_sa_instance_state')
+
+        print(df_companies.head(10))
+
+        scorer = SparkLshScorer(model_provider="spark",
+                                dataset=df_companies,
+                                company_id=company_id)
+
+        scorer.process_sink_delta_feature_store(delta_dataset_path=f"./lakehouse/company")
+
+        res = scorer.train_and_score(model_path="./lsh_brp", save_model=True)
+
+        return {"message": f"LSH credit acceptance: {res}."}
 
 
 @blp.route("/company/<string:company_id>")

@@ -8,4 +8,5 @@ pandas
 seaborn
 scikit-learn
 pyspark
+pyarrow
 delta-spark
