@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 
 import pandas as pd
@@ -7,8 +8,9 @@ from pyspark.ml import Pipeline
 from pyspark.ml.feature import BucketedRandomProjectionLSH, RFormula, StandardScaler
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, desc
-
-import logging
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import StandardScaler as SKStandardScaler
 
 from utils.perf import st_time
 
@@ -16,7 +18,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-
 logger = logging.getLogger(__name__)
 
 
-class LshScorer(ABC):
+class UnsupervisedScorer(ABC):
 
     def __init__(self, model_provider, dataset, company_id):
         self.model_provider = model_provider
@@ -28,16 +30,39 @@ class LshScorer(ABC):
         pass
 
 
-class PandasLshScorer(LshScorer, ABC):
+class ScikitNNScorer(UnsupervisedScorer, ABC):
     def __init__(self, model_provider, dataset, company_id):
         super().__init__(model_provider, dataset, company_id)
         self.model_provider = model_provider
+        self.dataset = dataset
+        self.company_id = company_id
 
-    def train_and_score(self, dataset: pd.DataFrame):
-        pass
+    def train_and_score(self, model_path, save_model) -> str:
+        X_cols = ["revenue"]
+
+        X = self.dataset[X_cols]
+        scaler = SKStandardScaler()
+        X = scaler.fit_transform(X)
+
+        # y_col = ["accepted"]
+        # y = dataset[y_col]
+
+        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=12345)
+
+        neighbors = NearestNeighbors(n_neighbors=2, algorithm='ball_tree').fit(X)
+        distances, indices = neighbors.kneighbors(X)
+
+        logger.warning(f"distances: {distances}")
+        logger.warning(f"indices: {indices}")
+
+        neighbors_index = indices[int(self.company_id)][1]
+
+        verdict = self.dataset["accepted"][neighbors_index]
+
+        return verdict
 
 
-class SparkLshScorer(LshScorer, ABC):
+class SparkLshScorer(UnsupervisedScorer, ABC):
     def __init__(self, model_provider, dataset, company_id):
         super().__init__(model_provider, dataset, company_id)
         self.model_provider = model_provider
@@ -88,12 +113,12 @@ class SparkLshScorer(LshScorer, ABC):
 
         neighbors = brp.approxNearestNeighbors(transformed.select("scaled_features"), query_vector, 6)
 
-        verdict = transformed.join(neighbors, on="scaled_features", how="leftouter")\
-            .where(col("distCol") != 0)\
-            .select(col("accepted"))\
-            .groupby(col("accepted"))\
-            .agg(count("accepted").alias("count"))\
-            .sort(desc(col("count")))\
+        verdict = transformed.join(neighbors, on="scaled_features", how="leftouter") \
+            .where(col("distCol") != 0) \
+            .select(col("accepted")) \
+            .groupby(col("accepted")) \
+            .agg(count("accepted").alias("count")) \
+            .sort(desc(col("count"))) \
             .select("accepted").collect()[0][0]
 
         return verdict
