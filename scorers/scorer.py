@@ -2,10 +2,18 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 import pyspark.pandas as ps
+from delta import DeltaTable
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import BucketedRandomProjectionLSH, RFormula, StandardScaler
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, desc
+
+import logging
+
+from utils.perf import st_time
+
+logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
+logger = logging.getLogger(__name__)
 
 
 class LshScorer(ABC):
@@ -40,8 +48,17 @@ class SparkLshScorer(LshScorer, ABC):
             .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
             .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
             .getOrCreate()
+        self.spark.sparkContext.setLogLevel('WARN')
 
+    @st_time
     def train_and_score(self, model_path, save_model) -> str:
+        """
+        Training and scoring.
+        :param model_path:
+        :param save_model:
+        :return:
+        """
+        logger.warning("Training and scoring...")
         # name  accepted  id  revenue
         df_spark = self.spark.createDataFrame(self.dataset).drop("name")
 
@@ -67,15 +84,10 @@ class SparkLshScorer(LshScorer, ABC):
         query_vector = pipeline_model.transform(query).select(col("scaled_features")).collect()[0][0]
         transformed = pipeline_model.transform(df_spark)
 
-        transformed.show()
-
         brp = pipeline_model.stages[-1]
 
         neighbors = brp.approxNearestNeighbors(transformed.select("scaled_features"), query_vector, 6)
 
-        neighbors.show()
-
-        # TODO develop some logic to decide like majority vote ?
         verdict = transformed.join(neighbors, on="scaled_features", how="leftouter")\
             .where(col("distCol") != 0)\
             .select(col("accepted"))\
@@ -86,7 +98,12 @@ class SparkLshScorer(LshScorer, ABC):
 
         return verdict
 
-    def process_sink_delta_feature_store(self, delta_dataset_path) -> None:
+    @st_time
+    def process_sink_delta_feature_store(self, delta_dataset_path) -> int:
         psdf = ps.from_pandas(self.dataset)
         psdf.to_delta(delta_dataset_path)
-        # TODO return delta version for logging ?
+
+        deltaTable = DeltaTable.forPath(self.spark, delta_dataset_path)
+        version = deltaTable.history().head().asDict()["version"]
+
+        return version
