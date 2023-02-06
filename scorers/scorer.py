@@ -5,7 +5,7 @@ import pyspark.pandas as ps
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import BucketedRandomProjectionLSH, RFormula, StandardScaler
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+from pyspark.sql.functions import col, count, desc
 
 
 class LshScorer(ABC):
@@ -41,10 +41,9 @@ class SparkLshScorer(LshScorer, ABC):
             .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
             .getOrCreate()
 
-    def train_and_score(self, model_path, save_model):
+    def train_and_score(self, model_path, save_model) -> str:
         # name  accepted  id  revenue
-        df_spark = self.spark.createDataFrame(self.dataset).drop("name", "id")
-        df_spark.show()
+        df_spark = self.spark.createDataFrame(self.dataset).drop("name")
 
         rf = RFormula(formula="accepted ~ revenue",
                       featuresCol="features",
@@ -68,15 +67,24 @@ class SparkLshScorer(LshScorer, ABC):
         query_vector = pipeline_model.transform(query).select(col("scaled_features")).collect()[0][0]
         transformed = pipeline_model.transform(df_spark)
 
+        transformed.show()
+
         brp = pipeline_model.stages[-1]
 
-        neighbors = brp.approxNearestNeighbors(transformed.select("scaled_features"), query_vector, 3)
+        neighbors = brp.approxNearestNeighbors(transformed.select("scaled_features"), query_vector, 6)
 
         neighbors.show()
 
         # TODO develop some logic to decide like majority vote ?
+        verdict = transformed.join(neighbors, on="scaled_features", how="leftouter")\
+            .where(col("distCol") != 0)\
+            .select(col("accepted"))\
+            .groupby(col("accepted"))\
+            .agg(count("accepted").alias("count"))\
+            .sort(desc(col("count")))\
+            .select("accepted").collect()[0][0]
 
-        return "Yes"
+        return verdict
 
     def process_sink_delta_feature_store(self, delta_dataset_path) -> None:
         psdf = ps.from_pandas(self.dataset)

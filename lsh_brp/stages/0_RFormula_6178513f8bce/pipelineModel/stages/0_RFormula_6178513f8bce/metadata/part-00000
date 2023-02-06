@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.VectorAssembler","timestamp":1675699031354,"sparkVersion":"3.3.1","uid":"RFormula_6178513f8bce","paramMap":{"handleInvalid":"error","outputCol":"features","inputCols":["revenue"]},"defaultParamMap":{"handleInvalid":"error","outputCol":"RFormula_6178513f8bce__output"}}

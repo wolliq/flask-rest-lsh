@@ -33,7 +33,7 @@ class CompanyScore(MethodView):
 
         res = scorer.train_and_score(model_path="./lsh_brp", save_model=True)
 
-        return {"message": f"Company credit advice: {res}."}
+        return {"message": f"LSH credit acceptance: {res}."}
 
 
 @blp.route("/company/<string:company_id>")
