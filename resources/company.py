@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from db import db
 from models import CompanyModel
 from schemas import CompanySchema
-from scorers.scorer import SparkLshScorer
+from scorers.scorer import SparkLshScorer, ScikitNNScorer
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 logger = logging.getLogger(__name__)
@@ -30,16 +30,22 @@ class CompanyScore(MethodView):
 
         print(df_companies.head(10))
 
-        scorer = SparkLshScorer(model_provider="spark",
-                                dataset=df_companies,
-                                company_id=company_id)
+        spark_scorer = SparkLshScorer(model_provider="spark",
+                                      dataset=df_companies,
+                                      company_id=company_id)
 
-        last_delta_version = scorer.process_sink_delta_feature_store(delta_dataset_path=f"./lakehouse/company")
+        last_delta_version = spark_scorer.process_sink_delta_feature_store(delta_dataset_path=f"./lakehouse/company")
         logger.warning(f"Delta table last version: {last_delta_version}")
 
-        res = scorer.train_and_score(model_path="./lsh_brp", save_model=True)
+        lsh_res = spark_scorer.train_and_score(model_path="./lsh_brp", save_model=True)
 
-        return {"message": f"LSH credit acceptance: {res}."}
+        scikit_scorer = ScikitNNScorer(model_provider="scikit",
+                                       dataset=df_companies,
+                                       company_id=company_id)
+
+        scikit_res = scikit_scorer.train_and_score(model_path="./lsh_brp", save_model=True)
+
+        return {"message": f"LSH acceptance: {lsh_res} and NN acceptance: {scikit_res}"}
 
 
 @blp.route("/company/<string:company_id>")
