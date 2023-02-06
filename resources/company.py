@@ -28,9 +28,12 @@ class CompanyScore(MethodView):
                                 dataset=df_companies,
                                 company_id=company_id)
 
-        scorer.process_delta_feature_store(dataset_path=f"./lakehouse/company")
-        scorer.train(model_path="./lsh_brp", save_model=True)
-        res = scorer.score()
+        scorer.process_sink_delta_feature_store(dataset_path=f"./lakehouse/company")
+        #
+        # scorer.train(model_path="./lsh_brp", save_model=True)
+        # res = scorer.score()
+
+        res = ""
 
         return {"message": f"Company credit advice: {res}."}
 
