@@ -8,4 +8,11 @@
     <orderEntry type="jdk" jdkName="df-train" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
+  <component name="PyNamespacePackagesService">
+    <option name="namespacePackageFolders">
+      <list>
+        <option value="$MODULE_DIR$/scorers" />
+      </list>
+    </option>
+  </component>
 </module>

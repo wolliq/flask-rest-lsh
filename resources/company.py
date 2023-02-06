@@ -6,29 +6,33 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from db import db
 from models import CompanyModel
 from schemas import CompanySchema
+from scorers.scorer import SparkLshScorer
 
 blp = Blueprint("Company", "company", description="Operations on companies")
-
-
-class CompanyModelManager:
-    pass
 
 
 @blp.route("/score/<string:company_id>")
 class CompanyScore(MethodView):
     def get(self, company_id):
-        company = CompanyModel.query.get_or_404(company_id)
+        CompanyModel.query.get_or_404(company_id)
 
         companies = CompanyModel.query.all()
-        df_companies = pd.DataFrame([c._asdict() for c in companies])
 
-        manager = CompanyModelManager()
+        df_companies = pd.DataFrame(
+                [c.__dict__ for c in companies]
+            ).drop(columns='_sa_instance_state')
 
-        delta_path = ""
-        path = manager.createDeltaTable(path=delta_path)
-        response = manager.score(dataset_path=delta_path, query=company, method="lsh_spark")
+        print(df_companies.head(10))
 
-        return {"message": f"Company response: {response}."}
+        scorer = SparkLshScorer(model_provider="spark",
+                                dataset=df_companies,
+                                company_id=company_id)
+
+        scorer.process_delta_feature_store(dataset_path=f"./lakehouse/company")
+        scorer.train(model_path="./lsh_brp", save_model=True)
+        res = scorer.score()
+
+        return {"message": f"Company credit advice: {res}."}
 
 
 @blp.route("/company/<string:company_id>")
