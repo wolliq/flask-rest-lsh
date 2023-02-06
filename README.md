@@ -70,3 +70,10 @@ df train with flask and lsh
 ```
 
 if in the neighbours we have more accepted than refused the company is scored as accepted.
+
+The app will respond to the /score endpoint with a human readable answer such as:
+```
+{
+	"message": "LSH credit acceptance: False."
+}
+```
