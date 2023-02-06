@@ -20,7 +20,8 @@ class CompanyScore(MethodView):
 
         df_companies = pd.DataFrame(
                 [c.__dict__ for c in companies]
-            ).drop(columns='_sa_instance_state')
+            )\
+            .drop(columns='_sa_instance_state')
 
         print(df_companies.head(10))
 
@@ -28,12 +29,9 @@ class CompanyScore(MethodView):
                                 dataset=df_companies,
                                 company_id=company_id)
 
-        scorer.process_sink_delta_feature_store(dataset_path=f"./lakehouse/company")
-        #
-        # scorer.train(model_path="./lsh_brp", save_model=True)
-        # res = scorer.score()
+        scorer.process_sink_delta_feature_store(delta_dataset_path=f"./lakehouse/company")
 
-        res = ""
+        res = scorer.train_and_score(model_path="./lsh_brp", save_model=True)
 
         return {"message": f"Company credit advice: {res}."}
 
