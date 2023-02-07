@@ -1,7 +1,19 @@
 # flask-rest-lsh
 df train with flask and lsh
 
-# dataset
+# Run the flask app
+```
+$ flask run
+```
+
+# Targets the endpoints
+You target:
+- /company to create companies in db or retrieve them with GET and POST requests
+- /score/ID to score a specific company by ID
+
+
+# The dataset
+The dataset has name, revenue, id and accepted columns
 ```
                 name  accepted  revenue  id
 0  my_test_company_1      True      100   1
@@ -13,7 +25,8 @@ df train with flask and lsh
 6  my_test_company_7     False       95   7
 ```
 
-# create company POSTing to /company
+# Example POST
+Creation of a company POSTing to /company
 ```
 {
 	"name": "my_test_company_7",
@@ -22,12 +35,14 @@ df train with flask and lsh
 }
 ```
 
-# score sending a GET request with ID to score
+# Example GET
+Score sending a GET request with ID to score
 ```
 /score/2
 ```
 
-# result interpretation
+# Result interpretation
+A majority vote is used to determine the verdict
 ```
 +--------+-------+---+--------+-----+--------------------+--------------------+
 |accepted|revenue| id|features|label|     scaled_features|              hashes|
@@ -69,7 +84,7 @@ df train with flask and lsh
 
 ```
 
-if in the neighbours we have more accepted than refused the company is scored as accepted.
+If in the neighbours we have more accepted than refused the company is scored as accepted.
 
 The app will respond to the /score endpoint with a human readable answer such as:
 ```
