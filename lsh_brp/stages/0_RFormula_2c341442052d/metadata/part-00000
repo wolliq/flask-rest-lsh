@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.RFormulaModel","timestamp":1675775131412,"sparkVersion":"3.3.1","uid":"RFormula_2c341442052d","paramMap":{"labelCol":"label","formula":"accepted ~ revenue","featuresCol":"features"},"defaultParamMap":{"handleInvalid":"error","stringIndexerOrderType":"frequencyDesc","labelCol":"label","forceIndexLabel":false,"featuresCol":"features"}}
