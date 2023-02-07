@@ -28,7 +28,7 @@ class CompanyScore(MethodView):
         ) \
             .drop(columns='_sa_instance_state')
 
-        print(df_companies.head(10))
+        logger.warning(df_companies.head(10))
 
         spark_scorer = SparkLshScorer(model_provider="spark",
                                       dataset=df_companies,
